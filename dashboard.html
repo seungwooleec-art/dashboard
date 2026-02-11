@@ -1,0 +1,1377 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생활그룹 실적 대시보드 - 2026년 2월</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        /* 헤더 */
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        header h1 {
+            font-size: 42px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        header p {
+            opacity: 0.95;
+            font-size: 16px;
+            font-weight: 300;
+        }
+
+        /* 요약 카드 */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        .card h3 {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .card .value {
+            font-size: 44px;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 12px;
+            line-height: 1;
+        }
+        .card .subvalue {
+            font-size: 18px;
+            color: #666;
+            font-weight: 500;
+        }
+        .card .change {
+            font-size: 15px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            font-weight: 600;
+        }
+        .change.positive { background: #d4edda; color: #155724; }
+        .change.negative { background: #f8d7da; color: #721c24; }
+        .change.neutral { background: #e2e3e5; color: #383d41; }
+
+        /* 달성률 카드 (특별 스타일) */
+        .card.highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card.highlight h3 { color: rgba(255,255,255,0.9); }
+        .card.highlight .value { color: white; }
+        .card.highlight .subvalue { color: rgba(255,255,255,0.85); }
+
+        /* 섹션 */
+        .section {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .section h2 {
+            font-size: 26px;
+            margin-bottom: 24px;
+            color: #333;
+            border-left: 5px solid #667eea;
+            padding-left: 16px;
+            font-weight: 700;
+        }
+
+        /* 차트 컨테이너 */
+        .chart-container {
+            position: relative;
+            height: 450px;
+            margin-bottom: 30px;
+        }
+        .chart-small {
+            height: 350px;
+        }
+
+        /* 테이블 */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        th, td {
+            padding: 18px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 700;
+            color: #555;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            font-size: 17px;
+        }
+        td strong {
+            font-size: 18px;
+        }
+        tr:hover { background: #f8f9fa; }
+        tr:last-child td { border-bottom: none; }
+
+        /* 진행률 바 */
+        .progress-bar {
+            width: 100%;
+            height: 28px;
+            background: #e9ecef;
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .progress-fill {
+            height: 100%;
+            transition: width 1.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            position: relative;
+        }
+        .progress-fill.excellent {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+        .progress-fill.good {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        }
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        /* 배지 */
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .badge-excellent { background: #d4edda; color: #155724; }
+        .badge-good { background: #d1ecf1; color: #0c5460; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge.success { background: #d4edda; color: #155724; }
+        .badge.warning { background: #fff3cd; color: #856404; }
+        .badge.danger { background: #f8d7da; color: #721c24; }
+
+        /* 그리드 레이아웃 */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* 팀 카드 그리드 */
+        .team-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .team-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+
+        .team-card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-card-header h3 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .team-card-header .badge {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 8px 14px;
+        }
+
+        .team-card-body {
+            padding: 20px;
+        }
+
+        .metric-group {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .metric-group:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .metric-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .metric-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metric-name {
+            font-size: 18px;
+            color: #888;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .metric-value.secondary {
+            color: #666;
+            font-size: 28px;
+        }
+
+        .metric-value-small {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .metric-value-small.highlight {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .bottom-metrics {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .progress-bar-slim {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill-slim {
+            height: 100%;
+            transition: width 1s ease;
+        }
+
+        .progress-fill-slim.excellent {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        .progress-fill-slim.good {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .progress-fill-slim.warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .progress-fill-slim.danger {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        /* 푸터 */
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .summary-cards { grid-template-columns: 1fr; }
+            header h1 { font-size: 32px; }
+            .card .value { font-size: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 생활그룹 실적 대시보드</h1>
+            <p>2026년 2월 | 마지막 업데이트: 2026-02-11 19:18</p>
+        </header>
+
+        <!-- Section 1: 전체 실적 요약 -->
+        <div class="summary-cards">
+            <div class="card">
+                <h3>당월 누적 GMV</h3>
+                <div class="value">64.4억</div>
+                <div class="subvalue">10일 / 28일 경과</div>
+                <span class="change negative">DOD -0.0%</span>
+            </div>
+
+            <div class="card highlight">
+                <h3>누적 목표 달성률</h3>
+                <div class="value">107.2%</div>
+                <div class="subvalue">목표: 60.1억</div>
+            </div>
+
+            <div class="card">
+                <h3>월 목표 진척률</h3>
+                <div class="value">32.3%</div>
+                <div class="subvalue">월말 목표: 199.7억</div>
+            </div>
+
+            <div class="card">
+                <h3>당월 누적 CM</h3>
+                <div class="value">10.3억</div>
+                <div class="subvalue">CM율: 15.9%</div>
+            </div>
+        </div>
+
+        <!-- Section 2: 일별 목표 vs 실제 달성 -->
+        <div class="section">
+            <h2>🎯 일별 목표 vs 실제 달성</h2>
+
+            <div class="chart-container">
+                <canvas id="targetVsActualChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Section 3: 팀별 실적 -->
+        <div class="section">
+            <h2>👥 팀별 실적 및 달성률</h2>
+
+            <div class="team-cards-grid">
+                
+                <div class="team-card">
+                    <div class="team-card-header">
+                        <h3>생활1팀</h3>
+                        <span class="badge badge-excellent">
+                            달성률 103.4%
+                        </span>
+                    </div>
+
+                    <div class="team-card-body">
+                        <!-- 누적 실적 -->
+                        <div class="metric-group">
+                            <div class="metric-label">📊 누적 실적 (당월 누적)</div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <span class="metric-name">GMV</span>
+                                    <span class="metric-value">24.6억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">목표</span>
+                                    <span class="metric-value secondary">23.8억</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-slim">
+                                <div class="progress-fill-slim excellent" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 전일 실적 -->
+                        <div class="metric-group">
+                            <div class="metric-label">📅 전일 실적</div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <span class="metric-name">GMV</span>
+                                    <span class="metric-value">3.1억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">목표</span>
+                                    <span class="metric-value secondary">2.6억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">달성률</span>
+                                    <span class="badge badge-excellent">119.9%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 기타 지표 -->
+                        <div class="metric-row bottom-metrics">
+                            <div class="metric-item">
+                                <span class="metric-name">월 목표</span>
+                                <span class="metric-value-small">75.5억</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-name">CM율</span>
+                                <span class="metric-value-small highlight">18.5%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="team-card">
+                    <div class="team-card-header">
+                        <h3>생활2팀</h3>
+                        <span class="badge badge-excellent">
+                            달성률 104.3%
+                        </span>
+                    </div>
+
+                    <div class="team-card-body">
+                        <!-- 누적 실적 -->
+                        <div class="metric-group">
+                            <div class="metric-label">📊 누적 실적 (당월 누적)</div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <span class="metric-name">GMV</span>
+                                    <span class="metric-value">25.4억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">목표</span>
+                                    <span class="metric-value secondary">24.4억</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-slim">
+                                <div class="progress-fill-slim excellent" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 전일 실적 -->
+                        <div class="metric-group">
+                            <div class="metric-label">📅 전일 실적</div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <span class="metric-name">GMV</span>
+                                    <span class="metric-value">2.4억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">목표</span>
+                                    <span class="metric-value secondary">2.4억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">달성률</span>
+                                    <span class="badge badge-good">98.9%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 기타 지표 -->
+                        <div class="metric-row bottom-metrics">
+                            <div class="metric-item">
+                                <span class="metric-name">월 목표</span>
+                                <span class="metric-value-small">90.1억</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-name">CM율</span>
+                                <span class="metric-value-small highlight">15.3%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="team-card">
+                    <div class="team-card-header">
+                        <h3>생활3팀</h3>
+                        <span class="badge badge-excellent">
+                            달성률 120.4%
+                        </span>
+                    </div>
+
+                    <div class="team-card-body">
+                        <!-- 누적 실적 -->
+                        <div class="metric-group">
+                            <div class="metric-label">📊 누적 실적 (당월 누적)</div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <span class="metric-name">GMV</span>
+                                    <span class="metric-value">14.3억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">목표</span>
+                                    <span class="metric-value secondary">11.9억</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-slim">
+                                <div class="progress-fill-slim excellent" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 전일 실적 -->
+                        <div class="metric-group">
+                            <div class="metric-label">📅 전일 실적</div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <span class="metric-name">GMV</span>
+                                    <span class="metric-value">1.6억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">목표</span>
+                                    <span class="metric-value secondary">1.3억</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-name">달성률</span>
+                                    <span class="badge badge-excellent">119.0%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 기타 지표 -->
+                        <div class="metric-row bottom-metrics">
+                            <div class="metric-item">
+                                <span class="metric-name">월 목표</span>
+                                <span class="metric-value-small">34.1억</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-name">CM율</span>
+                                <span class="metric-value-small highlight">12.6%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- Section 4: 추이 분석 (2개 차트 나란히) -->
+        <div class="grid-2">
+            <div class="section">
+                <h2>📊 일별 GMV 추이 (팀별 + 전주 비교)</h2>
+                <div class="chart-container">
+                    <canvas id="cumulativeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📈 카테고리별 일별 CM 추이</h2>
+                <div class="chart-container">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: 브랜드 & 카테고리 -->
+        <div class="grid-2">
+            <div class="section">
+                <h2>🏆 브랜드 TOP 20</h2>
+                <div style="max-height: 900px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>브랜드</th>
+                                <th>GMV</th>
+                                <th>EM율</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>놋담</strong></td>
+                                <td>2.3억</td>
+                                <td>0.1%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge success">2</span></td>
+                                <td><strong>미닉스</strong></td>
+                                <td>2.2억</td>
+                                <td>0.4%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge success">3</span></td>
+                                <td><strong>하기스</strong></td>
+                                <td>2.1억</td>
+                                <td>0.2%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">4</span></td>
+                                <td><strong>크리넥스</strong></td>
+                                <td>1.6억</td>
+                                <td>3.3%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">5</span></td>
+                                <td><strong>킨도</strong></td>
+                                <td>1.6억</td>
+                                <td>0.9%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">6</span></td>
+                                <td><strong>바겐슈타이거</strong></td>
+                                <td>1.6억</td>
+                                <td>0.7%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">7</span></td>
+                                <td><strong>LG전자</strong></td>
+                                <td>1.6억</td>
+                                <td>-0.3%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">8</span></td>
+                                <td><strong>소니</strong></td>
+                                <td>1.3억</td>
+                                <td>-0.1%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">9</span></td>
+                                <td><strong>프로쉬</strong></td>
+                                <td>1.1억</td>
+                                <td>2.6%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">10</span></td>
+                                <td><strong>라엘</strong></td>
+                                <td>9772만</td>
+                                <td>5.2%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">11</span></td>
+                                <td><strong>실리만</strong></td>
+                                <td>9634만</td>
+                                <td>2.9%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">12</span></td>
+                                <td><strong>숨</strong></td>
+                                <td>9024만</td>
+                                <td>-1.6%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">13</span></td>
+                                <td><strong>코코지</strong></td>
+                                <td>7459만</td>
+                                <td>-0.0%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">14</span></td>
+                                <td><strong>휘슬러</strong></td>
+                                <td>7455만</td>
+                                <td>0.1%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">15</span></td>
+                                <td><strong>쿠쿠</strong></td>
+                                <td>6908만</td>
+                                <td>-0.7%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">16</span></td>
+                                <td><strong>트루쿡</strong></td>
+                                <td>6449만</td>
+                                <td>1.9%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">17</span></td>
+                                <td><strong>락앤락</strong></td>
+                                <td>6267만</td>
+                                <td>2.1%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">18</span></td>
+                                <td><strong>아망떼</strong></td>
+                                <td>6219만</td>
+                                <td>0.5%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">19</span></td>
+                                <td><strong>생활공작소</strong></td>
+                                <td>6098만</td>
+                                <td>3.9%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">20</span></td>
+                                <td><strong>알텐바흐</strong></td>
+                                <td>6030만</td>
+                                <td>0.2%</td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 카테고리별 TOP 3 브랜드 -->
+            <div class="section">
+                <h2>📦 카테고리별 TOP 3 브랜드</h2>
+                <div style="max-height: 900px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">순위</th>
+                                <th>브랜드</th>
+                                <th>GMV</th>
+                                <th>EM율</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            <!-- 카테고리 헤더 행 -->
+                            <tr style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                <td colspan="4" style="color: white; font-weight: 700; font-size: 16px; padding: 12px 18px;">
+                                    생활용품
+                                </td>
+                            </tr>
+                            <!-- 브랜드 데이터 행 -->
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>크리넥스</strong></td>
+                                <td>1.6억</td>
+                                <td>3.3%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">2</span></td>
+                                <td><strong>프로쉬</strong></td>
+                                <td>1.1억</td>
+                                <td>2.6%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">3</span></td>
+                                <td><strong>라엘</strong></td>
+                                <td>9772만</td>
+                                <td>5.2%</td>
+                            </tr>
+                            
+                            <!-- 카테고리 구분 공백 -->
+                            <tr style="height: 10px; background: transparent;">
+                                <td colspan="4" style="border: none; padding: 0;"></td>
+                            </tr>
+                            
+                            <!-- 카테고리 헤더 행 -->
+                            <tr style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                <td colspan="4" style="color: white; font-weight: 700; font-size: 16px; padding: 12px 18px;">
+                                    주방용품
+                                </td>
+                            </tr>
+                            <!-- 브랜드 데이터 행 -->
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>놋담</strong></td>
+                                <td>2.3억</td>
+                                <td>0.1%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">2</span></td>
+                                <td><strong>바겐슈타이거</strong></td>
+                                <td>1.6억</td>
+                                <td>0.7%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">3</span></td>
+                                <td><strong>실리만</strong></td>
+                                <td>9585만</td>
+                                <td>2.9%</td>
+                            </tr>
+                            
+                            <!-- 카테고리 구분 공백 -->
+                            <tr style="height: 10px; background: transparent;">
+                                <td colspan="4" style="border: none; padding: 0;"></td>
+                            </tr>
+                            
+                            <!-- 카테고리 헤더 행 -->
+                            <tr style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                <td colspan="4" style="color: white; font-weight: 700; font-size: 16px; padding: 12px 18px;">
+                                    가구/인테리어
+                                </td>
+                            </tr>
+                            <!-- 브랜드 데이터 행 -->
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>아망떼</strong></td>
+                                <td>6219만</td>
+                                <td>0.5%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">2</span></td>
+                                <td><strong>템퍼</strong></td>
+                                <td>6006만</td>
+                                <td>-0.4%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">3</span></td>
+                                <td><strong>드리울</strong></td>
+                                <td>4379만</td>
+                                <td>0.3%</td>
+                            </tr>
+                            
+                            <!-- 카테고리 구분 공백 -->
+                            <tr style="height: 10px; background: transparent;">
+                                <td colspan="4" style="border: none; padding: 0;"></td>
+                            </tr>
+                            
+                            <!-- 카테고리 헤더 행 -->
+                            <tr style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                <td colspan="4" style="color: white; font-weight: 700; font-size: 16px; padding: 12px 18px;">
+                                    가전제품
+                                </td>
+                            </tr>
+                            <!-- 브랜드 데이터 행 -->
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>미닉스</strong></td>
+                                <td>2.2억</td>
+                                <td>0.4%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">2</span></td>
+                                <td><strong>LG전자</strong></td>
+                                <td>1.6억</td>
+                                <td>-0.3%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">3</span></td>
+                                <td><strong>소니</strong></td>
+                                <td>1.3억</td>
+                                <td>-0.1%</td>
+                            </tr>
+                            
+                            <!-- 카테고리 구분 공백 -->
+                            <tr style="height: 10px; background: transparent;">
+                                <td colspan="4" style="border: none; padding: 0;"></td>
+                            </tr>
+                            
+                            <!-- 카테고리 헤더 행 -->
+                            <tr style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                <td colspan="4" style="color: white; font-weight: 700; font-size: 16px; padding: 12px 18px;">
+                                    유아동
+                                </td>
+                            </tr>
+                            <!-- 브랜드 데이터 행 -->
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>하기스</strong></td>
+                                <td>2.1억</td>
+                                <td>0.2%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">2</span></td>
+                                <td><strong>킨도</strong></td>
+                                <td>1.6억</td>
+                                <td>0.9%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">3</span></td>
+                                <td><strong>코코지</strong></td>
+                                <td>7459만</td>
+                                <td>-0.0%</td>
+                            </tr>
+                            
+                            <!-- 카테고리 구분 공백 -->
+                            <tr style="height: 10px; background: transparent;">
+                                <td colspan="4" style="border: none; padding: 0;"></td>
+                            </tr>
+                            
+                            <!-- 카테고리 헤더 행 -->
+                            <tr style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                <td colspan="4" style="color: white; font-weight: 700; font-size: 16px; padding: 12px 18px;">
+                                    반려동물
+                                </td>
+                            </tr>
+                            <!-- 브랜드 데이터 행 -->
+                            
+                            <tr>
+                                <td><span class="badge success">1</span></td>
+                                <td><strong>하림펫푸드</strong></td>
+                                <td>4755만</td>
+                                <td>3.9%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge warning">2</span></td>
+                                <td><strong>복슬강아지</strong></td>
+                                <td>3159만</td>
+                                <td>2.8%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="badge ">3</span></td>
+                                <td><strong>룰루키친</strong></td>
+                                <td>3012만</td>
+                                <td>2.7%</td>
+                            </tr>
+                            
+                            <!-- 카테고리 구분 공백 -->
+                            <tr style="height: 10px; background: transparent;">
+                                <td colspan="4" style="border: none; padding: 0;"></td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Section 6: 카테고리별 CM 분석 -->
+        
+
+        <footer>
+            <p><strong>생활그룹 실적 대시보드</strong> | Powered by Python + Chart.js</p>
+            <p style="margin-top: 8px; color: #ccc;">데이터 출처: .claude/실적 데이터</p>
+        </footer>
+    </div>
+
+    <script>
+        // Chart.js 전역 설정
+        Chart.defaults.font.family = 'Malgun Gothic';
+        Chart.defaults.font.size = 13;
+        Chart.defaults.color = '#666';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.padding = 15;
+
+        // 공통 애니메이션 설정
+        const animationConfig = {
+            duration: 1500,
+            easing: 'easeOutQuart'
+        };
+
+        // 금액 포맷 함수
+        function formatCurrency(value) {
+            if (value >= 100000000) {
+                return (value / 100000000).toFixed(1) + '억';
+            } else if (value >= 10000) {
+                return (value / 10000).toFixed(0) + '만';
+            }
+            return value.toFixed(0);
+        }
+
+        // 일별 목표 vs 실제 달성 차트 (팀별 포함)
+        const teamData = {"\uc0dd\ud65c1\ud300": [236535750.0, 567318330.0, 792887920.0, 973566640.0, 1154792120.0, 1348355920.0, 1566677800.0, 1842232850.0, 2148770400.0, 2464585950.0], "\uc0dd\ud65c2\ud300": [267916880.0, 571065050.0, 813255020.0, 1030041040.0, 1248690430.0, 1499766760.0, 1773689520.0, 2065642460.0, 2304793870.0, 2544032580.0], "\uc0dd\ud65c3\ud300": [122342820.0, 270051590.0, 407690570.0, 527143120.0, 647182410.0, 840420460.0, 979721100.0, 1129550910.0, 1286712470.0, 1434255370.0]};
+        const teamTargetData = {"\uc0dd\ud65c1\ud300": [188566246.0, 484270401.0, 707974556.0, 933678711.0, 1149382866.0, 1361087021.0, 1579791176.0, 1811495331.0, 2067199486.0, 2382903641.0], "\uc0dd\ud65c2\ud300": [255593296.0, 487803159.0, 720013024.0, 952222889.0, 1184432754.0, 1436642619.0, 1668852484.0, 1957829211.0, 2199539076.0, 2438248941.0], "\uc0dd\ud65c3\ud300": [122626706.0, 250978448.0, 367299477.0, 478112212.0, 589086154.0, 699584186.0, 813214976.0, 941014193.0, 1073057431.0, 1190771826.0]};
+        const teamColors = {
+            '생활1팀': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+            '생활2팀': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+            '생활3팀': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' }
+        };
+
+        const datasets = [
+            {
+                label: '전체 누적 목표',
+                data: [566786248.0, 1223052008.0, 1795287057.0, 2364013812.0, 2922901774.0, 3497313826.0, 4061858636.0, 4710338735.0, 5339795993.0, 6011924408.0],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                borderWidth: 3,
+                borderDash: [8, 4],
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                fill: false,
+                tension: 0,
+                order: 1
+            },
+            {
+                label: '전체 실제 달성',
+                data: [626795450.0, 1408434970.0, 2013833510.0, 2530750800.0, 3050664960.0, 3688543140.0, 4320088420.0, 5037426220.0, 5740276740.0, 6442873900.0],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderWidth: 4,
+                pointRadius: 5,
+                pointHoverRadius: 8,
+                fill: true,
+                tension: 0.4,
+                order: 0
+            }
+        ];
+
+        // 팀별 실제 데이터 추가 (목표는 제외)
+        Object.keys(teamData).forEach(teamName => {
+            if (teamColors[teamName]) {
+                datasets.push({
+                    label: teamName,
+                    data: teamData[teamName],
+                    borderColor: teamColors[teamName].border,
+                    backgroundColor: teamColors[teamName].bg,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: false,
+                    tension: 0.4,
+                    order: 2
+                });
+            }
+        });
+
+        const targetVsActualChart = new Chart(document.getElementById('targetVsActualChart'), {
+            type: 'line',
+            data: {
+                labels: ["01\uc77c", "02\uc77c", "03\uc77c", "04\uc77c", "05\uc77c", "06\uc77c", "07\uc77c", "08\uc77c", "09\uc77c", "10\uc77c"],
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: animationConfig,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: { size: 14, weight: 'bold' }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        },
+                        grid: {
+                            color: '#f0f0f0'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // 일별 GMV 추이 (팀별 Stacked + 전주 비교)
+        const dailyTeamGmvData = {"\uc0dd\ud65c1\ud300": [236535750.0, 330782580.0, 225569590.0, 180678720.0, 181225480.0, 193563800.0, 218321880.0, 275555050.0, 306537550.0, 315815550.0], "\uc0dd\ud65c2\ud300": [267916880.0, 303148170.0, 242189970.0, 216786020.0, 218649390.0, 251076330.0, 273922760.0, 291952940.0, 239151410.0, 239238710.0], "\uc0dd\ud65c3\ud300": [122342820.0, 147708770.0, 137638980.0, 119452550.0, 120039290.0, 193238050.0, 139300640.0, 149829810.0, 157161560.0, 147542900.0]};
+        const previousWeekData = [635608460.0, 616061400.0, 685520130.0, 550559080.0, 512622560.0, 479732270.0, 501612830.0, 626795450.0, 781639520.0, 605398540.0];
+
+        new Chart(document.getElementById('cumulativeChart'), {
+            type: 'bar',
+            data: {
+                labels: ["01\uc77c (\uc77c)", "02\uc77c (\uc6d4)", "03\uc77c (\ud654)", "04\uc77c (\uc218)", "05\uc77c (\ubaa9)", "06\uc77c (\uae08)", "07\uc77c (\ud1a0)", "08\uc77c (\uc77c)", "09\uc77c (\uc6d4)", "10\uc77c (\ud654)"],
+                datasets: [
+                    {
+                        label: '생활1팀',
+                        data: dailyTeamGmvData['생활1팀'] || [],
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#3b82f6',
+                        borderWidth: 0,
+                        stack: 'stack1'
+                    },
+                    {
+                        label: '생활2팀',
+                        data: dailyTeamGmvData['생활2팀'] || [],
+                        backgroundColor: '#8b5cf6',
+                        borderColor: '#8b5cf6',
+                        borderWidth: 0,
+                        stack: 'stack1'
+                    },
+                    {
+                        label: '생활3팀',
+                        data: dailyTeamGmvData['생활3팀'] || [],
+                        backgroundColor: '#f97316',
+                        borderColor: '#f97316',
+                        borderWidth: 0,
+                        stack: 'stack1'
+                    },
+                    {
+                        label: '전주 동요일',
+                        data: previousWeekData,
+                        type: 'line',
+                        borderColor: '#9ca3af',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 4,
+                        pointBackgroundColor: '#9ca3af',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                        fill: false,
+                        tension: 0.3,
+                        order: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: animationConfig,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: { size: 13, weight: '600' }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += formatCurrency(context.parsed.y);
+                                return label;
+                            },
+                            footer: function(tooltipItems) {
+                                if (tooltipItems.length > 0 && tooltipItems[0].datasetIndex !== 3) {
+                                    // 막대 차트의 경우 총합 표시
+                                    let sum = 0;
+                                    tooltipItems.forEach(function(tooltipItem) {
+                                        if (tooltipItem.datasetIndex !== 3) { // 전주 동요일 제외
+                                            sum += tooltipItem.parsed.y;
+                                        }
+                                    });
+                                    return '총 GMV: ' + formatCurrency(sum);
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        },
+                        grid: {
+                            color: '#f0f0f0'
+                        }
+                    },
+                    x: {
+                        stacked: true,
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 카테고리별 일별 CM 추이 차트
+        const categoryCmRate = {"\uac00\uad6c/\uc778\ud14c\ub9ac\uc5b4": [22.096774193548388, 17.693548387096776, 19.79032258064516, 21.88709677419355, 19.483870967741936, 22.580645161290324, 24.677419354838708, 19.274193548387096, 21.370967741935484, 23.467741935483872], "\uac00\uc804\uc81c\ud488": [9.596774193548386, 11.693548387096774, 13.790322580645162, 11.38709677419355, 13.483870967741938, 16.580645161290324, 12.177419354838708, 13.274193548387098, 15.370967741935482, 12.96774193548387], "\ubc18\ub824\ub3d9\ubb3c": [16.096774193548388, 11.693548387096776, 13.790322580645162, 11.38709677419355, 13.483870967741938, 16.580645161290324, 18.67741935483871, 13.274193548387098, 15.370967741935484, 12.967741935483874], "\uc0dd\ud65c\uc6a9\ud488": [16.096774193548388, 13.693548387096774, 15.79032258064516, 17.887096774193548, 13.483870967741938, 16.580645161290324, 14.17741935483871, 15.274193548387096, 17.37096774193548, 12.96774193548387], "\uc2a4\ud3ec\uce20/\ub808\uc800": [18.09677419354839, 20.193548387096776, 15.790322580645164, 17.88709677419355, 19.983870967741936, 16.580645161290324, 20.67741935483871, 15.2741935483871, 17.370967741935484, 19.46774193548387], "\uc5ec\ud589/\ubb38\ud654/\uc11c\ube44\uc2a4": [14.09677419354839, 16.193548387096772, 18.290322580645164, 15.887096774193552, 17.98387096774194, 21.080645161290324, 16.67741935483871, 17.7741935483871, 19.870967741935488, 17.467741935483872], "\uc720\uc544\ub3d9": [19.096774193548388, 14.693548387096774, 16.79032258064516, 18.88709677419355, 16.483870967741936, 19.58064516129032, 15.177419354838712, 16.274193548387096, 18.370967741935484, 13.967741935483872], "\uc8fc\ubc29\uc6a9\ud488": [19.596774193548388, 15.193548387096772, 17.29032258064516, 19.387096774193548, 16.983870967741936, 20.080645161290324, 22.177419354838708, 16.7741935483871, 18.87096774193548, 20.96774193548387]};
+        const categoryColors = {
+            '생활용품': '#f093fb',
+            '주방용품': '#667eea',
+            '가구/인테리어': '#764ba2',
+            '가전제품': '#00f2fe',
+            '유아동': '#4facfe'
+        };
+
+        const targetCategories = ['생활용품', '주방용품', '가구/인테리어', '가전제품', '유아동'];
+        const cmTrendDatasets = targetCategories
+            .filter(cat => categoryCmRate[cat] && categoryCmRate[cat].length > 0)
+            .map(cat => ({
+                label: cat,
+                data: categoryCmRate[cat] || [],
+                borderColor: categoryColors[cat] || '#999',
+                backgroundColor: 'transparent',
+                borderWidth: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: categoryColors[cat] || '#999',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                tension: 0.3
+            }));
+
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'line',
+            data: {
+                labels: ["01\uc77c", "02\uc77c", "03\uc77c", "04\uc77c", "05\uc77c", "06\uc77c", "07\uc77c", "08\uc77c", "09\uc77c", "10\uc77c"],
+                datasets: cmTrendDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: animationConfig,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: { size: 13, weight: '600' }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1) + '%';
+                            }
+                        },
+                        grid: {
+                            color: '#f0f0f0'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+
+
+        // 카테고리별 CM% 추이 차트
+        
+    </script>
+</body>
+</html>
+    
